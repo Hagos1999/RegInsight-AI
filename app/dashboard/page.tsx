@@ -77,7 +77,7 @@ export default function DashboardPage() {
       />
       <div className="page-content">
         {/* Welcome banner */}
-        <div className="rounded-2xl p-6 mb-6 relative overflow-hidden animate-fade-in"
+        <div className="rounded-2xl p-8 mb-8 relative overflow-hidden animate-fade-in"
           style={{ background: 'linear-gradient(135deg, #005f38 0%, #008751 60%, #00a863 100%)' }}>
           <div className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-10 -mr-20 -mt-20"
             style={{ background: 'radial-gradient(circle, white, transparent)' }} />
@@ -111,7 +111,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Stat cards row */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {[
             { label: 'Total Contract Value', value: formatNGN(totalContractValue), change: '+12.4%', up: true, icon: DollarSign, color: '#008751' },
             { label: 'Avg Compliance Score', value: `${overallMetrics.avgCompliance}%`, change: `+${overallMetrics.complianceChange}%`, up: true, icon: Activity, color: '#1d4ed8' },
@@ -139,7 +139,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Agency cards + chart */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {agencyCards.map((ag, i) => {
             const Icon = ag.icon;
             const canSee = user.role === 'admin' || user.role === 'auditor' || (user.role === 'agency');
@@ -178,7 +178,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Compliance trend + Alerts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Compliance chart */}
           <div className="card">
             <div className="flex items-center justify-between mb-4">

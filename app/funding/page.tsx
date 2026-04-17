@@ -99,7 +99,7 @@ export default function FundingPage() {
       <Header title="Funding Flow Visualizer" subtitle="Interactive money movement network with anomaly detection" />
       <div className="page-content">
         {/* Toolbar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div className="flex flex-wrap gap-2 items-center">
             {/* Legend */}
             {[
@@ -128,7 +128,7 @@ export default function FundingPage() {
         </div>
 
         {/* Network graph */}
-        <div className="card p-0 overflow-hidden mb-5" style={{ height: 560 }}>
+        <div className="card p-0 overflow-hidden mb-8" style={{ height: 560 }}>
           <ReactFlow
             nodes={rfNodes}
             edges={rfEdges}

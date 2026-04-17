@@ -61,7 +61,7 @@ export default function CompliancePage() {
       <Header title="Compliance Scorecard" subtitle="Real-time tax, CAC, and procurement compliance across parastatals" />
       <div className="page-content">
         {/* KPI gauges */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 mb-8">
           <GaugeCard label="Overall Compliance" value={overallMetrics.avgCompliance} color={scoreColor(overallMetrics.avgCompliance)} subtitle="Aggregate score" />
           <GaugeCard label="Filed On Time" value={overallMetrics.filedOnTime} color={scoreColor(overallMetrics.filedOnTime)} subtitle="Returns submitted" />
           <GaugeCard label="Active CAC Status" value={87} color="#1d4ed8" subtitle="Registered entities" />
@@ -69,7 +69,7 @@ export default function CompliancePage() {
         </div>
 
         {/* Summary stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 mb-8">
           {[
             { label: 'Overdue Filings', value: overallMetrics.overdueFilings, color: '#dc2626', icon: AlertTriangle },
             { label: 'Expired Registrations', value: overallMetrics.expiredRegistrations, color: '#dc2626', icon: AlertTriangle },
@@ -119,7 +119,7 @@ export default function CompliancePage() {
           </ResponsiveContainer>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
           {/* Parastatal scorecard table */}
           <div className="card lg:col-span-2">
             <div className="font-semibold mb-3 flex items-center gap-2">

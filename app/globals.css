@@ -42,14 +42,14 @@ html, body {
 /* Layout */
 .app-layout { display: flex; min-height: 100vh; }
 .main-content { flex: 1; margin-left: var(--sidebar-width); display: flex; flex-direction: column; min-height: 100vh; }
-.page-content { flex: 1; padding: 24px; max-width: 1400px; width: 100%; }
+.page-content { flex: 1; padding: 40px; max-width: 1400px; width: 100%; margin: 0 auto; }
 
 /* Cards */
 .card {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 20px;
+  padding: 28px;
   box-shadow: 0 1px 4px rgba(0,135,81,0.06);
   transition: box-shadow 0.2s, transform 0.2s;
 }
@@ -59,7 +59,7 @@ html, body {
   backdrop-filter: blur(12px);
   border: 1px solid rgba(0,135,81,0.15);
   border-radius: 12px;
-  padding: 20px;
+  padding: 28px;
 }
 
 /* Badges */
@@ -141,7 +141,7 @@ html, body {
 @media (max-width: 768px) {
   :root { --sidebar-width: 0px; }
   .main-content { margin-left: 0; }
-  .page-content { padding: 16px; }
+  .page-content { padding: 20px; }
   .sidebar { transform: translateX(-100%); }
   .sidebar.open { transform: translateX(0); }
 }

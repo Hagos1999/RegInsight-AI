@@ -91,9 +91,9 @@ export default function DocumentsPage() {
     <div>
       <Header title="AI Document Processor" subtitle="Upload regulatory documents for intelligent entity extraction" />
       <div className="page-content">
-        <div className="grid grid-cols-1 xl:grid-cols-5 gap-5">
+        <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
           {/* Left: upload + sample */}
-          <div className="xl:col-span-2 space-y-4">
+          <div className="xl:col-span-2 space-y-6">
             {!canUpload && (
               <div className="alert-strip alert-strip-amber">
                 <AlertTriangle size={16} className="shrink-0" />
@@ -161,7 +161,7 @@ export default function DocumentsPage() {
           </div>
 
           {/* Right: processing result */}
-          <div className="xl:col-span-3 space-y-4">
+          <div className="xl:col-span-3 space-y-6">
             {processing && (
               <div className="card flex flex-col items-center justify-center py-16 animate-fade-in">
                 <div className="w-12 h-12 rounded-full border-4 border-[var(--green-primary)] border-t-transparent animate-spin mb-4" />
@@ -183,7 +183,7 @@ export default function DocumentsPage() {
             {!processing && result && (
               <>
                 {/* Summary cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 animate-fade-in">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-5 animate-fade-in">
                   {[
                     { label: 'Doc Type', value: result.documentType, icon: FileText, color: '#008751' },
                     { label: 'Entities Found', value: result.entities.length.toString(), icon: Tag, color: '#1d4ed8' },
@@ -223,7 +223,7 @@ export default function DocumentsPage() {
                   <div className="font-semibold text-sm mb-3 flex items-center gap-2">
                     <Sparkles size={14} className="text-[var(--green-primary)]" /> Extraction Summary — {filename}
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-sm">
                     {[
                       { label: 'Currency Amounts', icon: '₦', items: result.summary.amounts, cls: 'entity-amount' },
                       { label: 'Dates', icon: '📅', items: result.summary.dates, cls: 'entity-date' },

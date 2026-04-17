@@ -144,7 +144,7 @@ export default function ContractsPage() {
       <Header title="Contract Tracker" subtitle="Procurement lifecycle — Kanban view" />
       <div className="page-content">
         {/* Toolbar */}
-        <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
+        <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
           <div className="flex gap-2 flex-wrap text-sm text-[var(--text-secondary)]">
             {columns.map(col => {
               const n = filtered.filter(c => c.status === col).length;
@@ -199,7 +199,7 @@ export default function ContractsPage() {
         )}
 
         {/* Kanban board */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {columns.map(col => {
             const cfg = statusConfig[col];
             const Icon = cfg.icon;

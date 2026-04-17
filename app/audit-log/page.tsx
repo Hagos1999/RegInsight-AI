@@ -66,7 +66,7 @@ export default function AuditLogPage() {
       <Header title="Blockchain Audit Log" subtitle="Immutable transaction ledger — tamper-evident chain" />
       <div className="page-content">
         {/* Info banner */}
-        <div className="rounded-xl p-4 mb-5 flex items-start gap-3 animate-fade-in"
+        <div className="rounded-xl p-6 mb-8 flex items-start gap-4 animate-fade-in"
           style={{ background: 'linear-gradient(135deg, #004d2c, #008751)', color: 'white' }}>
           <Lock size={20} className="mt-0.5 shrink-0 text-green-300" />
           <div>
@@ -83,7 +83,7 @@ export default function AuditLogPage() {
         </div>
 
         {/* Chain stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 mb-8">
           {[
             { label: 'Total Blocks', value: auditLog.length, color: '#008751' },
             { label: 'Risk Events', value: auditLog.filter(e => HIGH_RISK_ACTIONS.includes(e.action)).length, color: '#dc2626' },
@@ -98,7 +98,7 @@ export default function AuditLogPage() {
         </div>
 
         {/* Filters + export */}
-        <div className="flex flex-wrap items-center gap-3 mb-4">
+        <div className="flex flex-wrap items-center gap-4 mb-6">
           <div className="flex items-center gap-2 bg-white border border-[var(--border)] rounded-lg px-3 py-2 flex-1 min-w-48">
             <Search size={14} className="text-[var(--text-secondary)]" />
             <input type="text" placeholder="Search by action, user, entity..." className="bg-transparent text-sm outline-none flex-1"
