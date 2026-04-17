@@ -20,11 +20,11 @@ export default function Header({ title, subtitle }: { title: string; subtitle?: 
   const [roleOpen, setRoleOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-[var(--border)] px-6 py-3 flex items-center gap-4"
+    <header className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-[var(--border)] px-4 sm:px-6 py-3 flex items-center gap-4"
       style={{ boxShadow: '0 1px 8px rgba(0,135,81,0.08)' }}>
       {/* Mobile hamburger */}
       <button
-        className="md:hidden btn btn-ghost p-2"
+        className="lg:hidden btn btn-ghost p-2"
         onClick={() => setSidebarOpen(true)}
       >
         <Menu size={20} />

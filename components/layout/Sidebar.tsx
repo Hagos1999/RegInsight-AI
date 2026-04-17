@@ -31,7 +31,7 @@ export default function Sidebar() {
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/40 z-30 md:hidden backdrop-blur-sm"
+          className="fixed inset-0 bg-black/40 z-30 lg:hidden backdrop-blur-sm"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -57,7 +57,7 @@ export default function Sidebar() {
               <div className="text-white/50 text-[10px] uppercase tracking-wider">Nigeria RegTech</div>
             </div>
           </div>
-          <button className="md:hidden text-white/60 hover:text-white p-1" onClick={() => setSidebarOpen(false)}>
+          <button className="lg:hidden text-white/60 hover:text-white p-1" onClick={() => setSidebarOpen(false)}>
             <X size={18} />
           </button>
         </div>

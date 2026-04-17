@@ -199,7 +199,7 @@ export default function ContractsPage() {
         )}
 
         {/* Kanban board */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {columns.map(col => {
             const cfg = statusConfig[col];
             const Icon = cfg.icon;
