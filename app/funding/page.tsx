@@ -89,6 +89,9 @@ function severityTag(s: string): SevTag {
   return s === 'Critical' || s === 'High' ? 'red' : 'warm-gray';
 }
 
+const nodeTypes = {};
+const edgeTypes = {};
+
 export default function FundingPage() {
   const [anomalyOnly, setAnomalyOnly] = useState(false);
 
@@ -177,6 +180,8 @@ export default function FundingPage() {
         <ReactFlow
           nodes={nodes}
           edges={edges}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
