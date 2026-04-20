@@ -282,7 +282,7 @@ export default function DashboardPage() {
             </div>
             <Tag type="green" size="sm">↑ Improving</Tag>
           </div>
-          <AreaChart data={chartData} options={chartOptions} />
+          <AreaChart data={chartData} options={chartOptions as any} />
         </div>
 
         {/* Alert Feed */}

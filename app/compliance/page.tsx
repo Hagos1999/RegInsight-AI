@@ -79,7 +79,7 @@ function TrendChart({ record }: { record: ComplianceRecord }) {
     theme: 'g100',
     color: { scale: { [record.parastatal.split(' ')[0]]: record.overallScore >= 70 ? '#42be65' : '#fa4d56' } },
   };
-  return <LineChart data={data} options={options} />;
+  return <LineChart data={data} options={options as any} />;
 }
 
 // ── Headers for main table ────────────────────────────────────────────────────
@@ -189,7 +189,7 @@ export default function CompliancePage() {
                   <TableToolbarSearch
                     id="ri-compliance-search"
                     placeholder="Search parastatal or ministry…"
-                    onChange={e => setSearch(e.target.value)}
+                    onChange={(e: any, newSearchValue?: string) => setSearch(typeof newSearchValue === 'string' ? newSearchValue : e?.target?.value || e || '')}
                     value={search}
                   />
                 </TableToolbarContent>
@@ -199,7 +199,6 @@ export default function CompliancePage() {
                   <TableRow>
                     <TableExpandHeader aria-label="Expand row" />
                     {tableHeaders.map(h => (
-                      // @ts-expect-error Carbon types
                       <TableHeader {...getHeaderProps({ header: h })} key={h.key}>
                         {h.header}
                       </TableHeader>
@@ -288,7 +287,6 @@ export default function CompliancePage() {
                 <TableHead>
                   <TableRow>
                     {tableHeaders.map(h => (
-                      // @ts-expect-error Carbon types
                       <TableHeader {...getHeaderProps({ header: h })} key={h.key}>{h.header}</TableHeader>
                     ))}
                   </TableRow>

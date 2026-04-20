@@ -207,7 +207,6 @@ export default function FundingPage() {
                 <TableHead>
                   <TableRow>
                     {tableHeaders.map(h => (
-                      // @ts-expect-error Carbon types
                       <TableHeader {...getHeaderProps({ header: h })} key={h.key}>{h.header}</TableHeader>
                     ))}
                   </TableRow>

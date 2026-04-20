@@ -192,7 +192,6 @@ export default function AuditLogPage() {
                   <TableRow>
                     <TableExpandHeader aria-label="Expand row" />
                     {tableHeaders.map(h => (
-                      // @ts-expect-error Carbon types
                       <TableHeader {...getHeaderProps({ header: h })} key={h.key}>{h.header}</TableHeader>
                     ))}
                   </TableRow>
