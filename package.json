@@ -9,8 +9,12 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@carbon/charts-react": "^1.27.3",
+    "@carbon/icons-react": "^11.78.0",
+    "@carbon/react": "^1.105.0",
     "@hello-pangea/dnd": "^18.0.1",
     "crypto-js": "^4.2.0",
+    "d3": "^7.9.0",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.8.0",
     "next": "16.2.4",
@@ -18,6 +22,7 @@
     "react-dom": "19.2.4",
     "reactflow": "^11.11.4",
     "recharts": "^3.8.1",
+    "sass": "^1.99.0",
     "uuid": "^13.0.0"
   },
   "devDependencies": {

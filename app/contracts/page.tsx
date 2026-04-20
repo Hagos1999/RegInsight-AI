@@ -1,12 +1,20 @@
 'use client';
 import { useState } from 'react';
-import Header from '@/components/layout/Header';
 import { contracts, Contract, ContractStatus, RiskLevel } from '@/lib/mock-data/contracts';
 import { useApp } from '@/lib/app-context';
 import {
-  AlertTriangle, CheckCircle2, Clock, DollarSign, Filter,
-  X, ChevronDown, Building2, ShieldAlert, ExternalLink
-} from 'lucide-react';
+  Tag,
+  Button,
+  Select,
+  SelectItem,
+  InlineNotification,
+} from '@carbon/react';
+import {
+  WarningAlt,
+  Filter,
+  Close,
+  Building,
+} from '@carbon/icons-react';
 
 const formatNGN = (n: number) => {
   if (n >= 1_000_000_000) return `₦${(n / 1_000_000_000).toFixed(2)}B`;
@@ -14,125 +22,96 @@ const formatNGN = (n: number) => {
   return `₦${n.toLocaleString()}`;
 };
 
-const riskColors: Record<RiskLevel, string> = {
-  Low: 'badge-green', Medium: 'badge-amber', High: 'badge-red', Critical: 'badge-red',
+const riskTagType: Record<RiskLevel, 'green' | 'warm-gray' | 'red'> = {
+  Low: 'green', Medium: 'warm-gray', High: 'red', Critical: 'red',
 };
 
-const statusConfig: Record<ContractStatus, { color: string; border: string; dot: string; icon: React.ElementType }> = {
-  'Awarded': { color: '#1d4ed8', border: '#bfdbfe', dot: 'bg-blue-500', icon: Clock },
-  'In Progress': { color: '#b45309', border: '#fde68a', dot: 'bg-amber-500', icon: Clock },
-  'Completed': { color: '#008751', border: '#bbf7d0', dot: 'bg-green-500', icon: CheckCircle2 },
+const colConfig: Record<ContractStatus, { tagType: 'blue' | 'warm-gray' | 'green'; borderColor: string }> = {
+  Awarded: { tagType: 'blue', borderColor: '#4589ff' },
+  'In Progress': { tagType: 'warm-gray', borderColor: '#f0a500' },
+  Completed: { tagType: 'green', borderColor: '#42be65' },
 };
 
 const MINISTRIES = [...new Set(contracts.map(c => c.ministry))];
 
-function ContractCard({ c, onClick, canFlag }: { c: Contract; onClick: () => void; canFlag: boolean }) {
+function ContractCard({
+  c, onClick, canFlag, canMove, dragging, onDragStart, onDragEnd,
+}: {
+  c: Contract; onClick: () => void; canFlag: boolean; canMove: boolean;
+  dragging: boolean; onDragStart: () => void; onDragEnd: () => void;
+}) {
   const progress = Math.round((c.paymentsMade / c.totalPayments) * 100) || 0;
   return (
-    <div className="kanban-card" onClick={onClick}>
+    <div
+      className={`ri-kanban-card${c.flagged ? ' flagged' : ''}${dragging ? ' dragging' : ''}`}
+      draggable={canMove}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={e => e.key === 'Enter' && onClick()}
+      aria-label={`View contract: ${c.title}`}
+    >
       {c.flagged && canFlag && (
-        <div className="flex items-center gap-1.5 mb-2 text-xs text-red-700 font-semibold">
-          <AlertTriangle size={12} /> FLAGGED
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6, fontSize: 11, fontWeight: 700, color: 'var(--ri-red)' }}>
+          <WarningAlt size={11} aria-hidden="true" /> FLAGGED
         </div>
       )}
-      <div className="text-xs font-bold text-[var(--text-primary)] leading-snug mb-1 line-clamp-2">{c.title}</div>
-      <div className="text-[10px] text-[var(--text-secondary)] mb-2.5 flex items-center gap-1">
-        <Building2 size={10} /> {c.ministry}
+      <div className="ri-contract-title">{c.title}</div>
+      <div className="ri-contract-ministry" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <Building size={10} aria-hidden="true" /> {c.ministry}
       </div>
-      <div className="flex items-center justify-between mb-2.5">
-        <span className="text-sm font-extrabold text-[var(--green-dark)]">{formatNGN(c.value)}</span>
-        <span className={`badge ${riskColors[c.riskLevel]} text-[10px]`}>
-          {c.riskLevel === 'Critical' || c.riskLevel === 'High' ? <AlertTriangle size={9} className="mr-0.5" /> : null}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <span className="ri-contract-value">{formatNGN(c.value)}</span>
+        <Tag type={riskTagType[c.riskLevel]} size="sm">
+          {(c.riskLevel === 'Critical' || c.riskLevel === 'High') && <WarningAlt size={9} aria-hidden="true" />}
           {c.riskLevel}
-        </span>
+        </Tag>
       </div>
-      <div className="mb-2">
-        <div className="flex justify-between text-[10px] text-[var(--text-secondary)] mb-1">
+
+      {/* Payment progress */}
+      <div style={{ marginBottom: 8 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--cds-text-secondary)', marginBottom: 4 }}>
           <span>Payments {c.paymentsMade}/{c.totalPayments}</span>
           <span>{progress}%</span>
         </div>
-        <div className="progress-bar">
-          <div className="progress-fill" style={{ width: `${progress}%`, background: progress === 100 ? '#008751' : '#f59e0b' }} />
+        <div className="ri-progress-bar">
+          <div
+            className="ri-progress-fill"
+            style={{ width: `${progress}%`, background: progress === 100 ? '#42be65' : '#f0a500' }}
+          />
         </div>
       </div>
-      <div className="flex items-center justify-between text-[10px] text-[var(--text-secondary)]">
-        <span>{c.contractor.slice(0, 20)}{c.contractor.length > 20 ? '…' : ''}</span>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--cds-text-secondary)' }}>
+        <span>{c.contractor.length > 22 ? c.contractor.slice(0, 22) + '…' : c.contractor}</span>
         <span>Due {c.dueDate}</span>
       </div>
     </div>
   );
 }
 
-function ContractModal({ c, onClose, canFlag }: { c: Contract; onClose: () => void; canFlag: boolean }) {
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-box" onClick={e => e.stopPropagation()}>
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <div className="text-xs text-[var(--text-secondary)] mb-1">{c.id}</div>
-            <h2 className="text-lg font-bold text-[var(--text-primary)] leading-tight">{c.title}</h2>
-          </div>
-          <button className="btn btn-ghost p-1.5" onClick={onClose}><X size={18} /></button>
-        </div>
-        {c.flagged && canFlag && (
-          <div className="alert-strip alert-strip-red mb-4">
-            <AlertTriangle size={16} className="shrink-0" />
-            <div><strong>Flagged:</strong> {c.flagReason}</div>
-          </div>
-        )}
-        <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
-          {[
-            { label: 'Ministry', value: c.ministry },
-            { label: 'Contractor', value: c.contractor },
-            { label: 'Contract Value', value: formatNGN(c.value) },
-            { label: 'Risk Level', value: c.riskLevel },
-            { label: 'Status', value: c.status },
-            { label: 'Awarded', value: c.awarded },
-            { label: 'Due Date', value: c.dueDate },
-            { label: 'Tax ID (FIRS)', value: c.taxId },
-            { label: 'CAC Reg #', value: c.cacReg },
-            { label: 'Payments Made', value: `${c.paymentsMade} of ${c.totalPayments}` },
-          ].map(r => (
-            <div key={r.label} className="bg-[#f8faf9] rounded-lg p-3">
-              <div className="text-[10px] text-[var(--text-secondary)] uppercase tracking-wider mb-0.5">{r.label}</div>
-              <div className="font-semibold text-[var(--text-primary)] text-sm">{r.value}</div>
-            </div>
-          ))}
-        </div>
-        <div className="bg-[#f8faf9] rounded-lg p-3 mb-4">
-          <div className="text-[10px] text-[var(--text-secondary)] uppercase tracking-wider mb-1">Description</div>
-          <p className="text-sm text-[var(--text-primary)]">{c.description}</p>
-        </div>
-        <div className="bg-[#f8faf9] rounded-lg p-3">
-          <div className="text-[10px] text-[var(--text-secondary)] uppercase tracking-wider mb-1">Audit Hash</div>
-          <div className="hash-block text-[10px] break-all">{c.auditHash}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function ContractsPage() {
-  const { user } = useApp();
-  const canFlag = user.role === 'admin' || user.role === 'auditor';
-  const canMove = user.role === 'admin' || user.role === 'agency';
+  const { permissions } = useApp();
+  const canFlag = permissions.canSeeAnomalyAlerts;
+  const canMove = permissions.canMoveKanbanCards;
 
   const [data, setData] = useState(contracts);
-  const [filters, setFilters] = useState({ ministry: '', risk: '', minValue: 0, maxValue: 400_000_000_000 });
+  const [ministry, setMinistry] = useState('');
+  const [risk, setRisk] = useState('');
   const [showFilter, setShowFilter] = useState(false);
   const [selected, setSelected] = useState<Contract | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
 
   const filtered = data.filter(c => {
-    if (filters.ministry && c.ministry !== filters.ministry) return false;
-    if (filters.risk && c.riskLevel !== filters.risk) return false;
-    if (c.value < filters.minValue || c.value > filters.maxValue) return false;
+    if (ministry && c.ministry !== ministry) return false;
+    if (risk && c.riskLevel !== risk) return false;
     return true;
   });
 
   const columns: ContractStatus[] = ['Awarded', 'In Progress', 'Completed'];
 
-  const handleDragStart = (id: string) => { if (canMove) setDragging(id); };
   const handleDrop = (status: ContractStatus) => {
     if (!dragging || !canMove) return;
     setData(prev => prev.map(c => c.id === dragging ? { ...c, status } : c));
@@ -140,109 +119,195 @@ export default function ContractsPage() {
   };
 
   return (
-    <div>
-      <Header title="Contract Tracker" subtitle="Procurement lifecycle — Kanban view" />
-      <div className="page-content">
-        {/* Toolbar */}
-        <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
-          <div className="flex gap-2 flex-wrap text-sm text-[var(--text-secondary)]">
-            {columns.map(col => {
-              const n = filtered.filter(c => c.status === col).length;
-              const cfg = statusConfig[col];
-              return (
-                <span key={col} className="flex items-center gap-1.5 bg-white border border-[var(--border)] px-3 py-1.5 rounded-lg">
-                  <span className={`w-2 h-2 rounded-full ${cfg.dot}`} />
-                  {col}: <strong className="text-[var(--text-primary)]">{n}</strong>
-                </span>
-              );
-            })}
-          </div>
-          <button className="btn btn-outline text-sm" onClick={() => setShowFilter(!showFilter)}>
-            <Filter size={14} /> Filter {showFilter ? <ChevronDown size={14} className="rotate-180" /> : <ChevronDown size={14} />}
-          </button>
-        </div>
+    <div className="ri-page">
+      <div style={{ marginBottom: '1.5rem' }}>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--cds-text-primary)', marginBottom: 4 }}>
+          Contract Tracker
+        </h1>
+        <p style={{ fontSize: 13, color: 'var(--cds-text-secondary)' }}>
+          Procurement lifecycle — Kanban boards with drag-and-drop
+        </p>
+      </div>
 
-        {/* Filter panel */}
-        {showFilter && (
-          <div className="card mb-5 animate-fade-in">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-              <div>
-                <label className="text-[10px] uppercase tracking-wider text-[var(--text-secondary)] font-semibold block mb-1">Ministry</label>
-                <select className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm outline-none focus:border-[var(--green-primary)]"
-                  value={filters.ministry} onChange={e => setFilters({ ...filters, ministry: e.target.value })}>
-                  <option value="">All Ministries</option>
-                  {MINISTRIES.map(m => <option key={m}>{m}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-[10px] uppercase tracking-wider text-[var(--text-secondary)] font-semibold block mb-1">Risk Level</label>
-                <select className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm outline-none focus:border-[var(--green-primary)]"
-                  value={filters.risk} onChange={e => setFilters({ ...filters, risk: e.target.value })}>
-                  <option value="">All Levels</option>
-                  {['Low', 'Medium', 'High', 'Critical'].map(r => <option key={r}>{r}</option>)}
-                </select>
-              </div>
-              <div className="flex items-end">
-                <button className="btn btn-ghost text-sm" onClick={() => setFilters({ ministry: '', risk: '', minValue: 0, maxValue: 400_000_000_000 })}>
-                  <X size={14} /> Clear Filters
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {!canMove && (
-          <div className="alert-strip alert-strip-blue mb-4">
-            <ShieldAlert size={15} className="shrink-0" />
-            <span className="text-sm">Auditor mode — cards are read-only. Drag-and-drop is disabled.</span>
-          </div>
-        )}
-
-        {/* Kanban board */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Toolbar */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           {columns.map(col => {
-            const cfg = statusConfig[col];
-            const Icon = cfg.icon;
-            const colContracts = filtered.filter(c => c.status === col);
+            const n = filtered.filter(c => c.status === col).length;
+            const cfg = colConfig[col];
             return (
-              <div
-                key={col}
-                className="kanban-col"
-                onDragOver={e => { e.preventDefault(); }}
-                onDrop={() => handleDrop(col)}
-              >
-                <div className="kanban-col-header flex items-center gap-2" style={{ color: cfg.color, borderColor: cfg.border }}>
-                  <Icon size={14} />
-                  {col}
-                  <span className="ml-auto bg-white border border-current rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
-                    {colContracts.length}
-                  </span>
-                </div>
-                <div className="p-1 min-h-[400px]">
-                  {colContracts.length === 0 && (
-                    <div className="flex items-center justify-center h-32 text-xs text-[var(--text-secondary)]">
-                      No contracts
-                    </div>
-                  )}
-                  {colContracts.map(c => (
-                    <div
-                      key={c.id}
-                      draggable={canMove}
-                      onDragStart={() => handleDragStart(c.id)}
-                      onDragEnd={() => setDragging(null)}
-                      className={dragging === c.id ? 'opacity-50' : ''}
-                    >
-                      <ContractCard c={c} onClick={() => setSelected(c)} canFlag={canFlag} />
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <Tag key={col} type={cfg.tagType} size="sm">
+                {col}: {n}
+              </Tag>
             );
           })}
+          {(ministry || risk) && (
+            <Tag type="cool-gray" size="sm">
+              {filtered.length} of {data.length} shown
+            </Tag>
+          )}
         </div>
-
-        {selected && <ContractModal c={selected} onClose={() => setSelected(null)} canFlag={canFlag} />}
+        <Button
+          size="sm"
+          kind={showFilter ? 'primary' : 'tertiary'}
+          renderIcon={Filter}
+          onClick={() => setShowFilter(!showFilter)}
+          id="ri-contracts-filter-btn"
+        >
+          {showFilter ? 'Hide Filters' : 'Filter'}
+        </Button>
       </div>
+
+      {/* Filter panel */}
+      {showFilter && (
+        <div
+          className="ri-chart-panel ri-fade-up"
+          style={{ marginBottom: '1rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', alignItems: 'flex-end' }}
+        >
+          <Select
+            id="ri-ministry-filter"
+            labelText="Ministry"
+            value={ministry}
+            onChange={e => setMinistry(e.target.value)}
+          >
+            <SelectItem value="" text="All Ministries" />
+            {MINISTRIES.map(m => <SelectItem key={m} value={m} text={m} />)}
+          </Select>
+
+          <Select
+            id="ri-risk-filter"
+            labelText="Risk Level"
+            value={risk}
+            onChange={e => setRisk(e.target.value)}
+          >
+            <SelectItem value="" text="All Levels" />
+            {(['Low', 'Medium', 'High', 'Critical'] as RiskLevel[]).map(r =>
+              <SelectItem key={r} value={r} text={r} />
+            )}
+          </Select>
+
+          <Button
+            kind="ghost"
+            size="sm"
+            renderIcon={Close}
+            onClick={() => { setMinistry(''); setRisk(''); }}
+            id="ri-clear-filters"
+          >
+            Clear Filters
+          </Button>
+        </div>
+      )}
+
+      {/* Auditor notice */}
+      {!canMove && (
+        <InlineNotification
+          kind="info"
+          title="Read-only mode"
+          subtitle="Auditor role — drag-and-drop is disabled."
+          hideCloseButton
+          style={{ marginBottom: '1rem', maxWidth: '100%' }}
+          lowContrast
+        />
+      )}
+
+      {/* Kanban Board */}
+      <div className="ri-kanban-board">
+        {columns.map(col => {
+          const cfg = colConfig[col];
+          const colContracts = filtered.filter(c => c.status === col);
+          return (
+            <div
+              key={col}
+              className="ri-kanban-col"
+              onDragOver={e => e.preventDefault()}
+              onDrop={() => handleDrop(col)}
+              style={{ borderTop: `3px solid ${cfg.borderColor}` }}
+            >
+              <div className="ri-kanban-col-header" style={{ borderBottomColor: cfg.borderColor }}>
+                <span style={{ color: cfg.borderColor }}>{col}</span>
+                <Tag type={cfg.tagType} size="sm">{colContracts.length}</Tag>
+              </div>
+              <div className="ri-kanban-cards" style={{ minHeight: 300 }}>
+                {colContracts.length === 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 100, fontSize: 12, color: 'var(--cds-text-secondary)' }}>
+                    No contracts
+                  </div>
+                )}
+                {colContracts.map(c => (
+                  <ContractCard
+                    key={c.id}
+                    c={c}
+                    onClick={() => setSelected(c)}
+                    canFlag={canFlag}
+                    canMove={canMove}
+                    dragging={dragging === c.id}
+                    onDragStart={() => { if (canMove) setDragging(c.id); }}
+                    onDragEnd={() => setDragging(null)}
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Contract Detail Modal */}
+      {selected && (
+        <div className="ri-modal-overlay" onClick={() => setSelected(null)}>
+          <div className="ri-modal-box" onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--cds-text-secondary)', marginBottom: 4 }}>{selected.id}</div>
+                <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--cds-text-primary)', lineHeight: 1.3 }}>{selected.title}</h2>
+              </div>
+              <button
+                onClick={() => setSelected(null)}
+                aria-label="Close modal"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--cds-icon-primary)', padding: 4, borderRadius: 4 }}
+              >
+                <Close size={20} />
+              </button>
+            </div>
+
+            {selected.flagged && canFlag && (
+              <div className="ri-alert error" style={{ marginBottom: '1rem' }}>
+                <WarningAlt size={16} aria-hidden="true" style={{ flexShrink: 0 }} />
+                <div><strong>Flagged:</strong> {selected.flagReason}</div>
+              </div>
+            )}
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.625rem', marginBottom: '1rem' }}>
+              {[
+                { label: 'Ministry', value: selected.ministry },
+                { label: 'Contractor', value: selected.contractor },
+                { label: 'Contract Value', value: formatNGN(selected.value) },
+                { label: 'Risk Level', value: selected.riskLevel },
+                { label: 'Status', value: selected.status },
+                { label: 'Awarded', value: selected.awarded },
+                { label: 'Due Date', value: selected.dueDate },
+                { label: 'Tax ID (FIRS)', value: selected.taxId },
+                { label: 'CAC Reg #', value: selected.cacReg },
+                { label: 'Payments Made', value: `${selected.paymentsMade} of ${selected.totalPayments}` },
+              ].map(r => (
+                <div key={r.label} style={{ background: 'var(--cds-layer-02)', borderRadius: 6, padding: '0.625rem 0.875rem' }}>
+                  <div style={{ fontSize: 10, color: 'var(--cds-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 2 }}>{r.label}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--cds-text-primary)' }}>{r.value}</div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ background: 'var(--cds-layer-02)', borderRadius: 6, padding: '0.75rem', marginBottom: '0.75rem' }}>
+              <div style={{ fontSize: 10, color: 'var(--cds-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Description</div>
+              <p style={{ fontSize: 13, color: 'var(--cds-text-primary)', lineHeight: 1.6 }}>{selected.description}</p>
+            </div>
+
+            <div style={{ background: 'var(--cds-layer-02)', borderRadius: 6, padding: '0.75rem' }}>
+              <div style={{ fontSize: 10, color: 'var(--cds-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Audit Hash</div>
+              <div className="ri-hash-code">{selected.auditHash}</div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

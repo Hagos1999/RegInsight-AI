@@ -1,12 +1,15 @@
 import type { NextConfig } from 'next';
+import path from 'path';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  // Required for ReactFlow to work without SSR issues
-  transpilePackages: ['reactflow'],
+  transpilePackages: ['@carbon/react', '@carbon/icons-react', '@carbon/charts-react', 'reactflow'],
   devIndicators: {
     appIsrStatus: false,
     buildActivity: false,
+  },
+  sassOptions: {
+    includePaths: [path.join(process.cwd(), 'node_modules')],
   },
 };
 

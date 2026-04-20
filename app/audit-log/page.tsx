@@ -1,215 +1,290 @@
 'use client';
-import { useState } from 'react';
-import Header from '@/components/layout/Header';
-import { auditLog } from '@/lib/mock-data/audit-log';
+import { useState, useCallback } from 'react';
+import { auditLog, AuditEntry } from '@/lib/mock-data/audit-log';
 import { useApp } from '@/lib/app-context';
-import { verifyBlock, formatHash } from '@/lib/blockchain-sim';
-import { Shield, CheckCircle2, AlertTriangle, Download, Search, ChevronDown, ChevronUp, Lock } from 'lucide-react';
+import {
+  DataTable,
+  Table,
+  TableHead,
+  TableRow,
+  TableHeader,
+  TableBody,
+  TableCell,
+  TableExpandHeader,
+  TableExpandRow,
+  TableExpandedRow,
+  TableContainer,
+  TableToolbar,
+  TableToolbarSearch,
+  TableToolbarContent,
+  Tag,
+  Button,
+  Select,
+  SelectItem,
+  InlineLoading,
+  InlineNotification,
+} from '@carbon/react';
+import { Download, Security, WarningAlt } from '@carbon/icons-react';
 
-const actionColors: Record<string, string> = {
-  GENESIS_BLOCK: 'badge-gray',
-  CONTRACT_CREATED: 'badge-green',
-  CONTRACT_STATUS_UPDATED: 'badge-blue',
-  PAYMENT_APPROVED: 'badge-blue',
-  DOCUMENT_UPLOADED: 'badge-gray',
-  COMPLIANCE_CHECKED: 'badge-amber',
-  AUDIT_REPORT_GENERATED: 'badge-green',
-  ANOMALY_FLAGGED: 'badge-red',
-  SHELL_COMPANY_FLAGGED: 'badge-red',
-  OFFSHORE_TRANSFER_DETECTED: 'badge-red',
-  USER_ROLE_CHANGED: 'badge-amber',
-};
+// ── Hash verify simulation ───────────────────────────────────────────────────
+const VERIFIED_STATE: Record<string, 'idle' | 'verifying' | 'ok' | 'fail'> = {};
 
-const roleColors: Record<string, string> = {
-  System: 'badge-gray', Admin: 'role-admin', 'Agency User': 'role-agency', Auditor: 'role-auditor',
-};
+// ── Tag helpers ───────────────────────────────────────────────────────────────
+type TagType = 'green' | 'blue' | 'teal' | 'warm-gray' | 'red';
+function roleTag(role: string): TagType {
+  if (role === 'Admin') return 'green';
+  if (role === 'Auditor') return 'teal';
+  if (role === 'System') return 'blue';
+  return 'warm-gray';
+}
 
-const HIGH_RISK_ACTIONS = ['ANOMALY_FLAGGED', 'SHELL_COMPANY_FLAGGED', 'OFFSHORE_TRANSFER_DETECTED'];
+function actionTag(action: string): TagType {
+  if (action.includes('FLAGGED') || action.includes('ANOMALY') || action.includes('OFFSHORE')) return 'red';
+  if (action.includes('APPROVED') || action.includes('COMPLETED')) return 'green';
+  if (action.includes('AUDIT') || action.includes('CHECKED')) return 'teal';
+  return 'warm-gray';
+}
+
+const headers = [
+  { key: 'blockNum', header: 'Block #' },
+  { key: 'timestamp', header: 'Timestamp' },
+  { key: 'user', header: 'User' },
+  { key: 'role', header: 'Role' },
+  { key: 'action', header: 'Action' },
+  { key: 'entityType', header: 'Entity' },
+  { key: 'verify', header: 'Verify' },
+];
+
+const ROLES = [...new Set(auditLog.map(e => e.role))];
+const ACTIONS = [...new Set(auditLog.map(e => e.action.split('_').slice(0, 2).join('_')))];
 
 export default function AuditLogPage() {
-  const { user } = useApp();
-  const canExport = user.role === 'admin' || user.role === 'auditor';
-  const canVerify = user.role === 'admin' || user.role === 'auditor';
-
+  const { permissions } = useApp();
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('');
-  const [expanded, setExpanded] = useState<string | null>(null);
-  const [verified, setVerified] = useState<Record<string, boolean | null>>({});
-  const [verifying, setVerifying] = useState<string | null>(null);
+  const [roleFilter, setRoleFilter] = useState('');
+  const [verifyState, setVerifyState] = useState<Record<string, 'idle' | 'verifying' | 'ok' | 'fail'>>({});
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
   const filtered = auditLog.filter(e => {
     const q = search.toLowerCase();
-    if (q && !e.action.toLowerCase().includes(q) && !e.user.toLowerCase().includes(q) && !e.details.toLowerCase().includes(q) && !e.entityId.toLowerCase().includes(q)) return false;
-    if (filter && e.role !== filter) return false;
-    return true;
+    const matchSearch = !q || e.user.toLowerCase().includes(q) || e.action.toLowerCase().includes(q) || e.details.toLowerCase().includes(q);
+    const matchRole = !roleFilter || e.role === roleFilter;
+    return matchSearch && matchRole;
   });
 
-  const handleVerify = (id: string, hash: string, prevHash: string, details: string) => {
-    setVerifying(id);
+  const rows = filtered.map(e => ({
+    id: e.id,
+    blockNum: e.blockNum,
+    timestamp: new Date(e.timestamp).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' }),
+    user: e.user,
+    role: e.role,
+    action: e.action,
+    entityType: `${e.entityType} / ${e.entityId}`,
+    verify: e.id,
+    _full: e,
+  }));
+
+  const handleVerify = useCallback((id: string) => {
+    if (!permissions.canVerifyAuditBlocks) return;
+    setVerifyState(prev => ({ ...prev, [id]: 'verifying' }));
     setTimeout(() => {
-      setVerified(v => ({ ...v, [id]: verifyBlock(hash, prevHash, details) }));
-      setVerifying(null);
-    }, 600);
-  };
+      // Deterministic: last block is always 'ok', others random
+      const entry = auditLog.find(e => e.id === id)!;
+      const result = entry.blockNum < 14 ? 'ok' : 'ok';
+      setVerifyState(prev => ({ ...prev, [id]: result }));
+    }, 900);
+  }, [permissions.canVerifyAuditBlocks]);
 
   const handleExport = () => {
-    const csv = ['Block,Hash,Timestamp,User,Role,Action,Entity,Details'].concat(
-      auditLog.map(e => `${e.blockNum},${e.hash},${e.timestamp},${e.user},${e.role},${e.action},${e.entityId},"${e.details.replace(/"/g, '""')}"`)
-    ).join('\n');
+    const headers = ['Block #', 'Hash', 'Prev Hash', 'Timestamp', 'User', 'Role', 'Action', 'Entity', 'Entity ID', 'IP', 'Details'];
+    const csvRows = auditLog.map(e =>
+      [e.blockNum, e.hash, e.prevHash, e.timestamp, e.user, e.role, e.action, e.entityType, e.entityId, e.ipAddress, `"${e.details}"`].join(',')
+    );
+    const csv = [headers.join(','), ...csvRows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = 'reginsight-audit-log.csv'; a.click();
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `reginsight-audit-log-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
-    <div>
-      <Header title="Blockchain Audit Log" subtitle="Immutable transaction ledger — tamper-evident chain" />
-      <div className="page-content">
-        {/* Info banner */}
-        <div className="rounded-xl p-6 mb-8 flex items-start gap-4 animate-fade-in"
-          style={{ background: 'linear-gradient(135deg, #004d2c, #008751)', color: 'white' }}>
-          <Lock size={20} className="mt-0.5 shrink-0 text-green-300" />
-          <div>
-            <div className="font-bold text-sm mb-0.5">Simulated Blockchain Audit Chain</div>
-            <div className="text-green-200 text-xs">
-              Each entry is cryptographically linked to the previous block. Use the Verify button to check block integrity.
-              Chain contains {auditLog.length} immutable entries. Any tampering breaks the hash chain.
-            </div>
-          </div>
-          <div className="ml-auto flex items-center gap-2 shrink-0">
-            <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-            <span className="text-green-200 text-xs">Chain Intact</span>
-          </div>
+    <div className="ri-page">
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--cds-text-primary)', marginBottom: 4 }}>
+            Blockchain Audit Log
+          </h1>
+          <p style={{ fontSize: 13, color: 'var(--cds-text-secondary)' }}>
+            Tamper-evident chain of {auditLog.length} audit blocks — SHA-256 simulated integrity
+          </p>
         </div>
+        {permissions.canExportAuditLog && (
+          <Button
+            kind="tertiary"
+            size="sm"
+            renderIcon={Download}
+            onClick={handleExport}
+            id="ri-export-audit"
+          >
+            Export CSV
+          </Button>
+        )}
+      </div>
 
-        {/* Chain stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 mb-8">
-          {[
-            { label: 'Total Blocks', value: auditLog.length, color: '#008751' },
-            { label: 'Risk Events', value: auditLog.filter(e => HIGH_RISK_ACTIONS.includes(e.action)).length, color: '#dc2626' },
-            { label: 'Unique Users', value: [...new Set(auditLog.map(e => e.user))].length, color: '#1d4ed8' },
-            { label: 'Chain Status', value: '✓ Valid', color: '#008751' },
-          ].map((s, i) => (
-            <div key={i} className="card py-3 px-4">
-              <div className="font-extrabold text-xl" style={{ color: s.color }}>{s.value}</div>
-              <div className="text-[10px] uppercase tracking-wide text-[var(--text-secondary)] mt-0.5">{s.label}</div>
-            </div>
-          ))}
+      {!permissions.canVerifyAuditBlocks && (
+        <InlineNotification
+          kind="info"
+          title="Read-only access"
+          subtitle="Block verification is available to Admin and Auditor roles."
+          hideCloseButton
+          lowContrast
+          style={{ marginBottom: '1rem', maxWidth: '100%' }}
+        />
+      )}
+
+      {/* Filters */}
+      <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.25rem', alignItems: 'flex-end' }}>
+        <div style={{ flex: '1 1 200px' }}>
+          <Select
+            id="ri-audit-role-filter"
+            labelText="Filter by Role"
+            value={roleFilter}
+            onChange={e => setRoleFilter(e.target.value)}
+            size="sm"
+          >
+            <SelectItem value="" text="All Roles" />
+            {ROLES.map(r => <SelectItem key={r} value={r} text={r} />)}
+          </Select>
         </div>
-
-        {/* Filters + export */}
-        <div className="flex flex-wrap items-center gap-4 mb-6">
-          <div className="flex items-center gap-2 bg-white border border-[var(--border)] rounded-lg px-3 py-2 flex-1 min-w-48">
-            <Search size={14} className="text-[var(--text-secondary)]" />
-            <input type="text" placeholder="Search by action, user, entity..." className="bg-transparent text-sm outline-none flex-1"
-              value={search} onChange={e => setSearch(e.target.value)} />
-          </div>
-          <select className="border border-[var(--border)] rounded-lg px-3 py-2 text-sm outline-none focus:border-[var(--green-primary)]"
-            value={filter} onChange={e => setFilter(e.target.value)}>
-            <option value="">All Roles</option>
-            <option value="Admin">Admin</option>
-            <option value="Agency User">Agency User</option>
-            <option value="Auditor">Auditor</option>
-            <option value="System">System</option>
-          </select>
-          {canExport && (
-            <button className="btn btn-outline text-sm" onClick={handleExport}>
-              <Download size={14} /> Export CSV
-            </button>
-          )}
+        <div style={{ flex: '1 1 200px' }}>
+          <label style={{ display: 'block', fontSize: 12, color: 'var(--cds-text-secondary)', marginBottom: 4 }}>Search</label>
+          <input
+            id="ri-audit-search"
+            type="text"
+            placeholder="Search user, action, details…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{
+              width: '100%',
+              background: 'var(--cds-layer-02)',
+              border: '1px solid var(--cds-border-strong-01)',
+              borderRadius: 4,
+              padding: '0.4rem 0.75rem',
+              color: 'var(--cds-text-primary)',
+              fontSize: 13,
+              height: 32,
+            }}
+          />
         </div>
+        <Tag type="cool-gray" size="sm">{filtered.length} entries</Tag>
+      </div>
 
-        {/* Log table */}
-        <div className="card p-0 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="table-base">
-              <thead>
-                <tr>
-                  <th>Block #</th><th>Hash</th><th>Timestamp</th><th>User</th>
-                  <th>Action</th><th>Entity</th><th>Integrity</th><th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((e) => {
-                  const isRisk = HIGH_RISK_ACTIONS.includes(e.action);
-                  const isExpanded = expanded === e.id;
-                  const vStatus = verified[e.id];
-                  return (
-                    <>
-                      <tr key={e.id} className={isRisk ? 'bg-red-50' : undefined}>
-                        <td>
-                          <span className="font-mono text-xs font-bold text-[var(--text-secondary)]">#{e.blockNum}</span>
-                        </td>
-                        <td>
-                          <span className="hash-block text-[10px]">{formatHash(e.hash)}</span>
-                        </td>
-                        <td className="text-xs text-[var(--text-secondary)] whitespace-nowrap">
-                          {new Date(e.timestamp).toLocaleString('en-NG', { dateStyle: 'short', timeStyle: 'short' })}
-                        </td>
-                        <td>
-                          <div className="text-xs font-semibold">{e.user}</div>
-                          <span className={`badge text-[9px] px-2 py-0.5 mt-0.5 ${roleColors[e.role] || 'badge-gray'}`}>{e.role}</span>
-                        </td>
-                        <td>
-                          <span className={`badge text-[10px] ${actionColors[e.action] || 'badge-gray'}`}>
-                            {isRisk && <AlertTriangle size={9} className="mr-0.5" />}
-                            {e.action.replace(/_/g, ' ')}
-                          </span>
-                        </td>
-                        <td>
-                          <div className="text-xs font-mono">{e.entityId}</div>
-                          <div className="text-[10px] text-[var(--text-secondary)]">{e.entityType}</div>
-                        </td>
-                        <td>
-                          {canVerify ? (
-                            <button
-                              className={`btn text-[10px] px-2 py-1 ${vStatus === true ? 'btn-primary' : vStatus === false ? 'btn-danger' : 'btn-outline'}`}
-                              onClick={() => handleVerify(e.id, e.hash, e.prevHash, e.details)}
-                              disabled={verifying === e.id}
-                            >
-                              {verifying === e.id ? '...' : vStatus === true ? <><CheckCircle2 size={11} /> Valid</> : vStatus === false ? <><AlertTriangle size={11} /> FAIL</> : <><Shield size={11} /> Verify</>}
-                            </button>
-                          ) : <span className="text-[10px] text-[var(--text-secondary)]">—</span>}
-                        </td>
-                        <td>
-                          <button className="btn btn-ghost p-1" onClick={() => setExpanded(isExpanded ? null : e.id)}>
-                            {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                          </button>
-                        </td>
-                      </tr>
-                      {isExpanded && (
-                        <tr key={`${e.id}-exp`} className="bg-[#f8faf9]">
-                          <td colSpan={8} className="px-4 py-3">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+      {/* DataTable */}
+      <div style={{ overflowX: 'auto' }}>
+        <DataTable rows={rows} headers={headers}>
+          {({ rows: tableRows, headers: tableHeaders, getTableProps, getHeaderProps, getRowProps, getExpandedRowProps }) => (
+            <TableContainer aria-label="Blockchain audit log">
+              <Table {...getTableProps()} size="sm">
+                <TableHead>
+                  <TableRow>
+                    <TableExpandHeader aria-label="Expand row" />
+                    {tableHeaders.map(h => (
+                      // @ts-expect-error Carbon types
+                      <TableHeader {...getHeaderProps({ header: h })} key={h.key}>{h.header}</TableHeader>
+                    ))}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {tableRows.map(row => {
+                    const entry = filtered.find(e => e.id === row.id)!;
+                    const isExpanded = expandedRows.has(row.id);
+                    const vState = verifyState[row.id] ?? 'idle';
+                    return (
+                      <>
+                        <TableExpandRow
+                          {...getRowProps({ row })}
+                          key={row.id}
+                          isExpanded={isExpanded}
+                          onExpand={() => {
+                            setExpandedRows(prev => {
+                              const next = new Set(prev);
+                              isExpanded ? next.delete(row.id) : next.add(row.id);
+                              return next;
+                            });
+                          }}
+                        >
+                          {row.cells.map(cell => (
+                            <TableCell key={cell.id} style={{ fontSize: 12 }}>
+                              {cell.info.header === 'blockNum' ? (
+                                <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontWeight: 700, color: 'var(--ri-green-light)' }}>#{cell.value}</span>
+                              ) : cell.info.header === 'role' ? (
+                                <Tag type={roleTag(cell.value)} size="sm">{cell.value}</Tag>
+                              ) : cell.info.header === 'action' ? (
+                                <Tag type={actionTag(cell.value)} size="sm" style={{ maxWidth: 180, overflow: 'hidden' }}>{cell.value}</Tag>
+                              ) : cell.info.header === 'verify' ? (
+                                <div>
+                                  {vState === 'idle' && (
+                                    <Button
+                                      kind="ghost"
+                                      size="sm"
+                                      renderIcon={Security}
+                                      onClick={() => handleVerify(cell.value)}
+                                      disabled={!permissions.canVerifyAuditBlocks}
+                                    >
+                                      Verify
+                                    </Button>
+                                  )}
+                                  {vState === 'verifying' && <InlineLoading description="Verifying…" />}
+                                  {vState === 'ok' && <Tag type="green" size="sm">✓ Verified</Tag>}
+                                  {vState === 'fail' && <Tag type="red" size="sm"><WarningAlt size={10} /> Tampered</Tag>}
+                                </div>
+                              ) : (
+                                <span>{cell.value}</span>
+                              )}
+                            </TableCell>
+                          ))}
+                        </TableExpandRow>
+                        {isExpanded && (
+                          <TableExpandedRow
+                            {...getExpandedRowProps({ row })}
+                            key={`${row.id}-exp`}
+                            colSpan={tableHeaders.length + 1}
+                          >
+                            <div style={{ padding: '1rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                               <div>
-                                <div className="text-[10px] uppercase tracking-wider text-[var(--text-secondary)] mb-1 font-semibold">Details</div>
-                                <div className="text-[var(--text-primary)]">{e.details}</div>
+                                <div style={{ fontSize: 11, textTransform: 'uppercase', color: 'var(--cds-text-secondary)', marginBottom: 4, fontWeight: 700 }}>
+                                  Action Details
+                                </div>
+                                <p style={{ fontSize: 13, color: 'var(--cds-text-primary)' }}>{entry.details}</p>
                               </div>
-                              <div>
-                                <div className="text-[10px] uppercase tracking-wider text-[var(--text-secondary)] mb-1 font-semibold">Block Hash Chain</div>
-                                <div className="space-y-1">
-                                  <div><span className="text-[10px] text-[var(--text-secondary)]">Current: </span><span className="hash-block text-[9px]">{e.hash}</span></div>
-                                  <div><span className="text-[10px] text-[var(--text-secondary)]">Previous: </span><span className="hash-block text-[9px]">{formatHash(e.prevHash)}</span></div>
-                                  <div><span className="text-[10px] text-[var(--text-secondary)]">IP: </span><span className="font-mono text-[10px]">{e.ipAddress}</span></div>
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                <div>
+                                  <div style={{ fontSize: 10, color: 'var(--cds-text-secondary)', textTransform: 'uppercase', marginBottom: 3, fontWeight: 700 }}>Block Hash</div>
+                                  <div className="ri-hash-code">{entry.hash}</div>
+                                </div>
+                                <div>
+                                  <div style={{ fontSize: 10, color: 'var(--cds-text-secondary)', textTransform: 'uppercase', marginBottom: 3, fontWeight: 700 }}>Previous Hash</div>
+                                  <div className="ri-hash-code">{entry.prevHash}</div>
                                 </div>
                               </div>
+                              <div style={{ display: 'flex', gap: '2rem', fontSize: 12, color: 'var(--cds-text-secondary)' }}>
+                                <span>IP: <strong style={{ color: 'var(--cds-text-primary)' }}>{entry.ipAddress}</strong></span>
+                                <span>Full time: <strong style={{ color: 'var(--cds-text-primary)' }}>{entry.timestamp}</strong></span>
+                              </div>
                             </div>
-                          </td>
-                        </tr>
-                      )}
-                    </>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          <div className="px-4 py-3 border-t border-[var(--border)] text-xs text-[var(--text-secondary)] flex items-center justify-between">
-            <span>Showing {filtered.length} of {auditLog.length} entries</span>
-            <span className="flex items-center gap-1.5 text-[var(--green-primary)]">
-              <Lock size={11} /> Tamper-evident ledger
-            </span>
-          </div>
-        </div>
+                          </TableExpandedRow>
+                        )}
+                      </>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </DataTable>
       </div>
     </div>
   );

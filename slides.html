@@ -1,0 +1,744 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RegInsight AI - Pitch Deck</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      :root {
+        --bg: #080c14;
+        --card: rgba(255, 255, 255, 0.03);
+        --accent: #00b894;
+        --accent-glow: rgba(0, 184, 148, 0.3);
+        --text: #f1f5f9;
+        --muted: #64748b;
+        --border: rgba(255, 255, 255, 0.08);
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+        overflow: hidden;
+        height: 100vh;
+        width: 100vw;
+      }
+      .bg-grid {
+        position: fixed;
+        inset: 0;
+        background-image:
+          linear-gradient(var(--border) 1px, transparent 1px),
+          linear-gradient(90deg, var(--border) 1px, transparent 1px);
+        background-size: 60px 60px;
+        opacity: 0.4;
+        z-index: 0;
+        pointer-events: none;
+      }
+      .bg-glow {
+        position: fixed;
+        width: 600px;
+        height: 600px;
+        background: radial-gradient(
+          circle,
+          var(--accent-glow) 0%,
+          transparent 70%
+        );
+        top: -200px;
+        right: -200px;
+        pointer-events: none;
+        z-index: 0;
+      }
+      .bg-glow-2 {
+        position: fixed;
+        width: 500px;
+        height: 500px;
+        background: radial-gradient(
+          circle,
+          rgba(99, 102, 241, 0.15) 0%,
+          transparent 70%
+        );
+        bottom: -100px;
+        left: -100px;
+        pointer-events: none;
+        z-index: 0;
+      }
+      .slide {
+        position: absolute;
+        inset: 0;
+        display: none;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 4rem 5rem;
+        z-index: 10;
+        opacity: 0;
+        transform: translateX(50px);
+        transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      .slide.active {
+        display: flex;
+        opacity: 1;
+        transform: translateX(0);
+      }
+      .slide.prev {
+        transform: translateX(-50px);
+      }
+
+      /* Typography */
+      h1 {
+        font-size: 4.5rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        line-height: 1.1;
+      }
+      h2 {
+        font-size: 3rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        margin-bottom: 2rem;
+      }
+      h3 {
+        font-size: 1.5rem;
+        font-weight: 600;
+      }
+      .subtitle {
+        font-size: 1.5rem;
+        color: var(--muted);
+        margin-top: 1rem;
+        max-width: 600px;
+      }
+      .label {
+        display: inline-block;
+        padding: 0.4rem 1rem;
+        border: 1px solid var(--accent);
+        color: var(--accent);
+        border-radius: 100px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 1.5rem;
+      }
+      .big-stat {
+        font-size: 4rem;
+        font-weight: 800;
+        color: var(--accent);
+        line-height: 1;
+      }
+
+      /* Layout Components */
+      .card-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+        width: 100%;
+        max-width: 1100px;
+        margin-top: 2rem;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 2rem;
+        backdrop-filter: blur(10px);
+        transition:
+          transform 0.3s,
+          border-color 0.3s;
+      }
+      .card:hover {
+        transform: translateY(-4px);
+        border-color: var(--accent);
+      }
+      .card-full {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 2.5rem;
+        backdrop-filter: blur(10px);
+        width: 100%;
+        max-width: 1100px;
+      }
+      .step-row {
+        display: flex;
+        gap: 2rem;
+        width: 100%;
+        max-width: 1100px;
+        justify-content: space-between;
+        margin-top: 2rem;
+      }
+      .step {
+        flex: 1;
+        text-align: center;
+        padding: 2rem 1rem;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        position: relative;
+      }
+      .step-num {
+        position: absolute;
+        top: -16px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--accent);
+        color: var(--bg);
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.9rem;
+      }
+      .feature-list {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+        width: 100%;
+        max-width: 1000px;
+        margin-top: 2rem;
+      }
+      .feature-item {
+        display: flex;
+        align-items: start;
+        gap: 1rem;
+        padding: 1.5rem;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+      }
+      .feature-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: rgba(0, 184, 148, 0.15);
+        color: var(--accent);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+      }
+      .tech-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        justify-content: center;
+        max-width: 900px;
+        margin-top: 2rem;
+      }
+      .tech-tag {
+        padding: 1rem 2rem;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 1.1rem;
+      }
+      .team-grid {
+        display: flex;
+        gap: 2rem;
+        margin-top: 2rem;
+      }
+      .team-card {
+        text-align: center;
+        padding: 2rem;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        width: 180px;
+      }
+      .avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--accent), #6366f1);
+        margin: 0 auto 1rem;
+      }
+
+      /* Navigation */
+      .nav {
+        position: fixed;
+        bottom: 2rem;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        z-index: 100;
+        background: rgba(8, 12, 20, 0.8);
+        padding: 0.75rem 1.5rem;
+        border-radius: 100px;
+        border: 1px solid var(--border);
+        backdrop-filter: blur(10px);
+      }
+      .nav button {
+        background: none;
+        border: none;
+        color: var(--text);
+        font-size: 1.2rem;
+        cursor: pointer;
+        padding: 0.5rem;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s;
+      }
+      .nav button:hover {
+        background: var(--card);
+      }
+      .counter {
+        font-variant-numeric: tabular-nums;
+        font-weight: 600;
+        color: var(--muted);
+        min-width: 50px;
+        text-align: center;
+      }
+      .progress-bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 3px;
+        background: var(--accent);
+        z-index: 100;
+        transition: width 0.4s ease;
+      }
+
+      /* Utilities */
+      .text-center {
+        text-align: center;
+      }
+      .text-accent {
+        color: var(--accent);
+      }
+      .mb-1 {
+        margin-bottom: 0.5rem;
+      }
+      .mb-2 {
+        margin-bottom: 1rem;
+      }
+      .mt-2 {
+        margin-top: 1rem;
+      }
+      .flex {
+        display: flex;
+      }
+      .items-center {
+        align-items: center;
+      }
+      .gap-2 {
+        gap: 0.5rem;
+      }
+
+      @media (max-width: 900px) {
+        h1 {
+          font-size: 2.5rem;
+        }
+        h2 {
+          font-size: 2rem;
+        }
+        .slide {
+          padding: 2rem;
+        }
+        .card-grid {
+          grid-template-columns: 1fr;
+        }
+        .step-row {
+          flex-direction: column;
+        }
+        .feature-list {
+          grid-template-columns: 1fr;
+        }
+        .team-grid {
+          flex-direction: column;
+          align-items: center;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bg-grid"></div>
+    <div class="bg-glow"></div>
+    <div class="bg-glow-2"></div>
+    <div class="progress-bar" id="progressBar"></div>
+
+    <!-- Slide 1: Title -->
+    <div class="slide active" data-index="0">
+      <div class="label">RegTech Hackathon 2026</div>
+      <h1>RegInsight <span class="text-accent">AI</span></h1>
+      <p
+        class="subtitle"
+        style="font-size: 1.8rem; color: var(--text); margin-top: 1.5rem"
+      >
+        Nigeria's Regulatory Nervous System
+      </p>
+      <p class="subtitle" style="margin-top: 2rem">
+        AI-powered intelligence for government agencies, parastatals &
+        compliance.
+      </p>
+      <div style="margin-top: 3rem; opacity: 0.6; font-size: 0.9rem">
+        Team [Your Name] &bull; Abuja &bull; April 2026
+      </div>
+    </div>
+
+    <!-- Slide 2: The Problem -->
+    <div class="slide" data-index="1">
+      <div class="label">The Crisis</div>
+      <h2>Regulation in the Dark</h2>
+      <div class="card-grid">
+        <div class="card text-center">
+          <div class="big-stat">₦2.9T</div>
+          <p style="color: var(--muted); margin-top: 0.5rem">
+            Lost annually to procurement fraud & tax leakages
+          </p>
+        </div>
+        <div class="card text-center">
+          <div class="big-stat">200+</div>
+          <p style="color: var(--muted); margin-top: 0.5rem">
+            Federal agencies operating in complete data silos
+          </p>
+        </div>
+        <div class="card text-center">
+          <div class="big-stat">6 wks</div>
+          <p style="color: var(--muted); margin-top: 0.5rem">
+            Average time to manually reconcile contract data
+          </p>
+        </div>
+      </div>
+      <p
+        class="subtitle text-center"
+        style="margin-top: 2rem; max-width: 800px"
+      >
+        Without cross-agency visibility, shell companies win duplicate
+        contracts, tax filings go unverified, and public funds disappear into
+        opacity.
+      </p>
+    </div>
+
+    <!-- Slide 3: The Solution -->
+    <div class="slide" data-index="2">
+      <div class="label">The Solution</div>
+      <h2>
+        One Platform. Total Visibility.
+        <span class="text-accent">Zero Leakage.</span>
+      </h2>
+      <div class="card-grid" style="grid-template-columns: repeat(3, 1fr)">
+        <div class="card">
+          <h3 class="text-accent mb-2">Aggregate</h3>
+          <p style="color: var(--muted)">
+            Unify data from FIRS, CAC, BPP and 200+ parastatals into a single
+            intelligence layer.
+          </p>
+        </div>
+        <div class="card">
+          <h3 class="text-accent mb-2">Analyze</h3>
+          <p style="color: var(--muted)">
+            AI extracts entities from contracts & filings, detecting anomalies
+            invisible to human reviewers.
+          </p>
+        </div>
+        <div class="card">
+          <h3 class="text-accent mb-2">Audit</h3>
+          <p style="color: var(--muted)">
+            Blockchain timestamps create immutable trails. Every naira tracked.
+            Every decision logged.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 4: How It Works -->
+    <div class="slide" data-index="3">
+      <div class="label">Process</div>
+      <h2>How It Works</h2>
+      <div class="step-row">
+        <div class="step">
+          <div class="step-num">1</div>
+          <h3 class="mb-2">INGEST</h3>
+          <p style="color: var(--muted); font-size: 0.95rem">
+            APIs & OCR digitize legacy documents across all agencies
+          </p>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <h3 class="mb-2">ANALYZE</h3>
+          <p style="color: var(--muted); font-size: 0.95rem">
+            Kimi AI NLP extracts vendors, values & dates. ML flags anomalies
+          </p>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <h3 class="mb-2">VERIFY</h3>
+          <p style="color: var(--muted); font-size: 0.95rem">
+            Hyperledger blockchain writes immutable audit hashes
+          </p>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <h3 class="mb-2">ACT</h3>
+          <p style="color: var(--muted); font-size: 0.95rem">
+            Real-time dashboards alert regulators to risks instantly
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 5: Product Features -->
+    <div class="slide" data-index="4">
+      <div class="label">Product</div>
+      <h2>The RegInsight Platform</h2>
+      <div class="feature-list">
+        <div class="feature-item">
+          <div class="feature-icon">◈</div>
+          <div>
+            <h3 class="mb-1">Unified Agency Dashboard</h3>
+            <p style="color: var(--muted); font-size: 0.95rem">
+              Single view across FIRS, CAC, BPP with role-based access control
+            </p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">⚡</div>
+          <div>
+            <h3 class="mb-1">Smart Contract Parser</h3>
+            <p style="color: var(--muted); font-size: 0.95rem">
+              Auto-extract award values, mobilization dates & penalty clauses
+              from scanned PDFs
+            </p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">◎</div>
+          <div>
+            <h3 class="mb-1">Funding Flow Visualizer</h3>
+            <p style="color: var(--muted); font-size: 0.95rem">
+              Interactive network graphs revealing shell companies & circular
+              payments
+            </p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">◉</div>
+          <div>
+            <h3 class="mb-1">Compliance Scorecard</h3>
+            <p style="color: var(--muted); font-size: 0.95rem">
+              Predictive alerts for filing deadlines, tax gaps & registration
+              lapses
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 6: Technology -->
+    <div class="slide" data-index="5">
+      <div class="label">Architecture</div>
+      <h2>Built for Scale</h2>
+      <div class="tech-grid">
+        <div class="tech-tag text-accent">Next.js 14</div>
+        <div class="tech-tag">Python FastAPI</div>
+        <div class="tech-tag text-accent">Kimi AI API</div>
+        <div class="tech-tag">PostgreSQL + Prisma</div>
+        <div class="tech-tag">Hyperledger</div>
+        <div class="tech-tag">Vercel + Railway</div>
+      </div>
+      <div class="card-full" style="margin-top: 2rem; text-align: center">
+        <p style="color: var(--muted); max-width: 700px; margin: 0 auto">
+          Next.js full-stack architecture with Python microservices for heavy
+          ML. Serverless deployment means we scale from one ministry to all 200+
+          agencies without rebuilding.
+        </p>
+      </div>
+    </div>
+
+    <!-- Slide 7: Impact -->
+    <div class="slide" data-index="6">
+      <div class="label">Market Impact</div>
+      <h2>Built for Nigeria's Future</h2>
+      <div class="card-grid">
+        <div class="card text-center">
+          <div class="big-stat">80%</div>
+          <p style="color: var(--muted); margin-top: 0.5rem">
+            Reduction in contract processing time
+          </p>
+        </div>
+        <div class="card text-center">
+          <div class="big-stat">15%</div>
+          <p style="color: var(--muted); margin-top: 0.5rem">
+            More revenue recovered via cross-agency analytics
+          </p>
+        </div>
+        <div class="card text-center">
+          <div class="big-stat">0</div>
+          <p style="color: var(--muted); margin-top: 0.5rem">
+            Data silos. Complete visibility across parastatals
+          </p>
+        </div>
+      </div>
+      <div
+        class="flex items-center gap-2"
+        style="margin-top: 2rem; justify-content: center"
+      >
+        <span style="color: var(--accent); font-weight: 600">Target:</span>
+        <span style="color: var(--muted)"
+          >FIRS • CAC • BPP • ICPC • Federal Ministries</span
+        >
+      </div>
+    </div>
+
+    <!-- Slide 8: Traction & Model -->
+    <div class="slide" data-index="7">
+      <div class="label">Go-to-Market</div>
+      <h2>Traction & Model</h2>
+      <div
+        style="
+          display: flex;
+          gap: 2rem;
+          width: 100%;
+          max-width: 1000px;
+          margin-top: 1rem;
+        "
+      >
+        <div class="card" style="flex: 1">
+          <h3 class="text-accent mb-2">Freemium</h3>
+          <p style="color: var(--muted)">
+            Free tier for small agencies & LGAs to digitize basic compliance
+            records
+          </p>
+        </div>
+        <div class="card" style="flex: 1">
+          <h3 class="text-accent mb-2">Enterprise</h3>
+          <p style="color: var(--muted)">
+            Licensed deployment for Ministries with custom analytics & dedicated
+            support
+          </p>
+        </div>
+        <div class="card" style="flex: 1">
+          <h3 class="text-accent mb-2">Intelligence</h3>
+          <p style="color: var(--muted)">
+            Data-as-a-Service for anti-corruption bodies & audit firms
+          </p>
+        </div>
+      </div>
+      <div class="card-full" style="margin-top: 1.5rem">
+        <div
+          class="flex items-center"
+          style="gap: 1.5rem; justify-content: center"
+        >
+          <div style="text-align: center">
+            <div style="font-size: 2rem; font-weight: 700">Pilot Ready</div>
+            <div style="color: var(--muted)">MVP deployed & tested</div>
+          </div>
+          <div
+            style="width: 1px; height: 50px; background: var(--border)"
+          ></div>
+          <div style="text-align: center">
+            <div style="font-size: 2rem; font-weight: 700">LOIs</div>
+            <div style="color: var(--muted)">In discussion with agencies</div>
+          </div>
+          <div
+            style="width: 1px; height: 50px; background: var(--border)"
+          ></div>
+          <div style="text-align: center">
+            <div style="font-size: 2rem; font-weight: 700">NDPR</div>
+            <div style="color: var(--muted)">Compliant & auditable</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 9: Team & Ask -->
+    <div class="slide" data-index="8">
+      <div class="label">The Ask</div>
+      <h2>Join Us</h2>
+      <div class="team-grid">
+        <div class="team-card">
+          <div class="avatar"></div>
+          <h3 class="mb-1">[Name]</h3>
+          <p style="color: var(--muted); font-size: 0.9rem">
+            Full-Stack Engineer
+          </p>
+        </div>
+        <div class="team-card">
+          <div class="avatar"></div>
+          <h3 class="mb-1">[Name]</h3>
+          <p style="color: var(--muted); font-size: 0.9rem">AI/ML Engineer</p>
+        </div>
+        <div class="team-card">
+          <div class="avatar"></div>
+          <h3 class="mb-1">[Name]</h3>
+          <p style="color: var(--muted); font-size: 0.9rem">Policy Lead</p>
+        </div>
+      </div>
+      <div style="margin-top: 2.5rem; text-align: center">
+        <div style="font-size: 3.5rem; font-weight: 800; color: var(--accent)">
+          $1,000
+        </div>
+        <p style="color: var(--text); margin-top: 0.5rem; font-size: 1.2rem">
+          Funds our 3-month pilot with <strong>FIRS</strong> to prove
+          cross-agency intelligence works.
+        </p>
+        <p style="color: var(--muted); margin-top: 1.5rem; font-size: 0.9rem">
+          Let's build Nigeria's regulatory future.
+        </p>
+      </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav">
+      <button onclick="prevSlide()">‹</button>
+      <span class="counter"><span id="current">1</span> / 9</span>
+      <button onclick="nextSlide()">›</button>
+    </div>
+
+    <script>
+      let current = 0;
+      const slides = document.querySelectorAll(".slide");
+      const total = slides.length;
+
+      function updateSlide() {
+        slides.forEach((slide, index) => {
+          slide.classList.remove("active", "prev");
+          if (index === current) slide.classList.add("active");
+          else if (index < current) slide.classList.add("prev");
+        });
+        document.getElementById("current").textContent = current + 1;
+        document.getElementById("progressBar").style.width =
+          ((current + 1) / total) * 100 + "%";
+      }
+
+      function nextSlide() {
+        if (current < total - 1) {
+          current++;
+          updateSlide();
+        }
+      }
+
+      function prevSlide() {
+        if (current > 0) {
+          current--;
+          updateSlide();
+        }
+      }
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowRight" || e.key === " ") nextSlide();
+        if (e.key === "ArrowLeft") prevSlide();
+      });
+
+      updateSlide();
+    </script>
+  </body>
+</html>

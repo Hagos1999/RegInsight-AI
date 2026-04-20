@@ -1,36 +1,72 @@
 'use client';
 import { useState, useRef, useCallback } from 'react';
-import Header from '@/components/layout/Header';
 import { processDocument, ProcessingResult, ExtractedEntity, sampleDocuments } from '@/lib/ai-processor';
 import { useApp } from '@/lib/app-context';
 import {
-  Upload, FileText, Sparkles, AlertTriangle, CheckCircle2,
-  Tag, Calendar, Building2, Hash, ShieldAlert, User, RefreshCw
-} from 'lucide-react';
+  Tag,
+  Button,
+  InlineLoading,
+  InlineNotification,
+  Tabs,
+  Tab,
+  TabList,
+  TabPanels,
+  TabPanel,
+} from '@carbon/react';
+import {
+  Upload,
+  Document,
+  MagicWand,
+  WarningAlt,
+  Policy,
+  TagGroup,
+  ArrowRight,
+} from '@carbon/icons-react';
 
-const entityConfig = {
-  amount: { label: 'Currency Amount', className: 'entity-amount', icon: '₦' },
-  date: { label: 'Date', className: 'entity-date', icon: '📅' },
-  org: { label: 'Organization', className: 'entity-org', icon: '🏛' },
-  taxid: { label: 'Tax ID / FIRS', className: 'entity-taxid', icon: '#' },
-  cacid: { label: 'CAC Registration', className: 'entity-taxid', icon: '©' },
-  risk: { label: 'Risk Indicator', className: 'entity-risk', icon: '⚠' },
-  person: { label: 'Person', className: 'entity-org', icon: '👤' },
+// ── Entity config ─────────────────────────────────────────────────────────────
+const ENTITY_CLASSES: Record<string, string> = {
+  amount: 'ri-entity-amount',
+  date: 'ri-entity-date',
+  org: 'ri-entity-org',
+  taxid: 'ri-entity-taxid',
+  cacid: 'ri-entity-cacid',
+  risk: 'ri-entity-risk',
+  person: 'ri-entity-person',
 };
 
+const ENTITY_LABELS: Record<string, string> = {
+  amount: 'Currency Amount',
+  date: 'Date',
+  org: 'Organization',
+  taxid: 'Tax ID / TIN',
+  cacid: 'CAC Registration',
+  risk: 'Risk Indicator',
+  person: 'Person',
+};
+
+// ── Highlighted text renderer ─────────────────────────────────────────────────
 function HighlightedText({ text, entities }: { text: string; entities: ExtractedEntity[] }) {
-  if (!entities.length) return <pre className="text-sm text-[var(--text-primary)] whitespace-pre-wrap font-sans leading-relaxed">{text}</pre>;
+  if (!entities.length) {
+    return (
+      <pre style={{ fontSize: 13, color: 'var(--cds-text-primary)', whiteSpace: 'pre-wrap', fontFamily: 'inherit', lineHeight: 1.7 }}>
+        {text}
+      </pre>
+    );
+  }
 
   const parts: React.ReactNode[] = [];
   let lastIdx = 0;
   const sorted = [...entities].sort((a, b) => a.start - b.start);
 
   sorted.forEach((ent, i) => {
-    if (ent.start > lastIdx) parts.push(<span key={`txt-${i}`}>{text.slice(lastIdx, ent.start)}</span>);
+    if (ent.start > lastIdx) parts.push(<span key={`t${i}`}>{text.slice(lastIdx, ent.start)}</span>);
     if (ent.start >= lastIdx) {
-      const cfg = entityConfig[ent.type] || entityConfig.org;
       parts.push(
-        <span key={`ent-${i}`} className={cfg.className} title={`${cfg.label} (${Math.round(ent.confidence * 100)}% confidence)`}>
+        <span
+          key={`e${i}`}
+          className={ENTITY_CLASSES[ent.type] ?? 'ri-entity-org'}
+          title={`${ENTITY_LABELS[ent.type] ?? ent.type} · ${Math.round(ent.confidence * 100)}% confidence`}
+        >
           {text.slice(ent.start, ent.end)}
         </span>
       );
@@ -39,21 +75,32 @@ function HighlightedText({ text, entities }: { text: string; entities: Extracted
   });
 
   if (lastIdx < text.length) parts.push(<span key="tail">{text.slice(lastIdx)}</span>);
-  return <pre className="text-sm text-[var(--text-primary)] whitespace-pre-wrap font-sans leading-relaxed">{parts}</pre>;
+
+  return (
+    <pre style={{ fontSize: 13, color: 'var(--cds-text-primary)', whiteSpace: 'pre-wrap', fontFamily: 'inherit', lineHeight: 1.7 }}>
+      {parts}
+    </pre>
+  );
 }
 
+// ── Entity legend ─────────────────────────────────────────────────────────────
 function EntityLegend() {
   return (
-    <div className="flex flex-wrap gap-2 mb-4">
-      {Object.entries(entityConfig).filter(([k]) => k !== 'cacid').map(([k, v]) => (
-        <span key={k} className={`${v.className} badge text-[11px]`}>{v.label}</span>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem', marginBottom: '0.75rem' }}>
+      {Object.entries(ENTITY_LABELS).map(([k, label]) => (
+        <span key={k} className={ENTITY_CLASSES[k]} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 600 }}>
+          {label}
+        </span>
       ))}
     </div>
   );
 }
 
+// ── Main page ─────────────────────────────────────────────────────────────────
 export default function DocumentsPage() {
-  const { user } = useApp();
+  const { permissions } = useApp();
+  const canUpload = permissions.canUploadDocuments;
+
   const [dragover, setDragover] = useState(false);
   const [text, setText] = useState('');
   const [filename, setFilename] = useState('');
@@ -61,17 +108,17 @@ export default function DocumentsPage() {
   const [processing, setProcessing] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const canUpload = user.role === 'admin' || user.role === 'agency';
-
   const runProcess = useCallback((content: string, name: string) => {
     setProcessing(true);
     setFilename(name);
     setText(content);
     setResult(null);
+    // Simulate 🤖 AI API latency
+    // TODO: Replace with: fetch('/api/process-doc', { method: 'POST', body: JSON.stringify({ text: content, fileName: name }) }).then(r => r.json())
     setTimeout(() => {
       setResult(processDocument(content));
       setProcessing(false);
-    }, 900);
+    }, 1000);
   }, []);
 
   const handleFile = (file: File) => {
@@ -81,181 +128,266 @@ export default function DocumentsPage() {
   };
 
   const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault(); setDragover(false);
+    e.preventDefault();
+    setDragover(false);
     if (!canUpload) return;
     const file = e.dataTransfer.files[0];
     if (file) handleFile(file);
   };
 
+  const riskColor = result
+    ? result.riskScore > 60 ? '#fa4d56' : result.riskScore > 30 ? '#f0a500' : '#42be65'
+    : '#42be65';
+
   return (
-    <div>
-      <Header title="AI Document Processor" subtitle="Upload regulatory documents for intelligent entity extraction" />
-      <div className="page-content">
-        <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
-          {/* Left: upload + sample */}
-          <div className="xl:col-span-2 space-y-6">
-            {!canUpload && (
-              <div className="alert-strip alert-strip-amber">
-                <AlertTriangle size={16} className="shrink-0" />
-                <span className="text-sm">Auditors have read-only access. Document upload is restricted.</span>
-              </div>
-            )}
+    <div className="ri-page">
+      <div style={{ marginBottom: '1.5rem' }}>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--cds-text-primary)', marginBottom: 4 }}>
+          AI Document Processor
+        </h1>
+        <p style={{ fontSize: 13, color: 'var(--cds-text-secondary)' }}>
+          Upload regulatory documents for intelligent entity extraction and risk assessment
+        </p>
+      </div>
 
-            {/* Upload zone */}
-            <div className="card">
-              <div className="font-semibold text-sm mb-3 flex items-center gap-2">
-                <Upload size={15} className="text-[var(--green-primary)]" /> Upload Document
-              </div>
-              <div
-                className={`upload-zone ${dragover ? 'dragover' : ''} ${!canUpload ? 'opacity-50 cursor-not-allowed' : ''}`}
-                onDragOver={e => { e.preventDefault(); if (canUpload) setDragover(true); }}
-                onDragLeave={() => setDragover(false)}
-                onDrop={handleDrop}
-                onClick={() => canUpload && fileRef.current?.click()}
-              >
-                <Upload size={32} className="mx-auto mb-3 text-[var(--text-secondary)]" />
-                <p className="text-sm font-medium text-[var(--text-primary)] mb-1">
-                  Drop file here or click to browse
-                </p>
-                <p className="text-xs text-[var(--text-secondary)]">
-                  Supports .txt, .pdf, .docx — Regulatory documents, contracts, filings
-                </p>
-                <input ref={fileRef} type="file" accept=".txt,.pdf,.docx" className="hidden"
-                  onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
-              </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 2fr) minmax(0, 3fr)', gap: '1.5rem', alignItems: 'flex-start' }}>
+        {/* ── Left column ─────────────────── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+
+          {/* Auditor notice */}
+          {!canUpload && (
+            <InlineNotification
+              kind="warning"
+              title="Read-only access"
+              subtitle="Document upload is restricted to Admin and Agency roles."
+              hideCloseButton
+              lowContrast
+            />
+          )}
+
+          {/* Upload zone */}
+          <div className="ri-chart-panel">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '0.75rem', fontWeight: 700, fontSize: 13 }}>
+              <Upload size={16} style={{ color: 'var(--ri-green-primary)' }} aria-hidden="true" />
+              Upload Document
             </div>
-
-            {/* Sample documents */}
-            <div className="card">
-              <div className="font-semibold text-sm mb-3 flex items-center gap-2">
-                <FileText size={15} className="text-[var(--green-primary)]" /> Sample Documents
-              </div>
-              <div className="space-y-2">
-                {sampleDocuments.map(doc => (
-                  <button
-                    key={doc.name}
-                    className="w-full text-left p-3 rounded-lg border border-[var(--border)] hover:border-[var(--green-primary)] hover:bg-[var(--green-pale)] transition-all group"
-                    onClick={() => runProcess(doc.content, doc.name)}
-                  >
-                    <div className="flex items-center gap-2">
-                      <FileText size={14} className="text-[var(--text-secondary)] group-hover:text-[var(--green-primary)]" />
-                      <div>
-                        <div className="text-xs font-semibold text-[var(--text-primary)]">{doc.name}</div>
-                        <div className="text-[10px] text-[var(--text-secondary)] capitalize">{doc.type} document</div>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
+            <div
+              className={`ri-upload-zone${dragover ? ' drag-over' : ''}${!canUpload ? '' : ''}`}
+              style={{ opacity: canUpload ? 1 : 0.5, cursor: canUpload ? 'pointer' : 'not-allowed' }}
+              onDragOver={e => { e.preventDefault(); if (canUpload) setDragover(true); }}
+              onDragLeave={() => setDragover(false)}
+              onDrop={handleDrop}
+              onClick={() => canUpload && fileRef.current?.click()}
+              role="button"
+              tabIndex={canUpload ? 0 : -1}
+              aria-label="Drop regulatory document here or click to upload"
+              onKeyDown={e => e.key === 'Enter' && canUpload && fileRef.current?.click()}
+            >
+              <Upload size={36} style={{ margin: '0 auto 0.75rem', display: 'block', color: 'var(--cds-text-secondary)' }} aria-hidden="true" />
+              <p style={{ fontWeight: 600, fontSize: 14, color: 'var(--cds-text-primary)', marginBottom: 4 }}>
+                {dragover ? 'Drop to analyze' : 'Drop file here or click to browse'}
+              </p>
+              <p style={{ fontSize: 12, color: 'var(--cds-text-secondary)' }}>
+                Supports .txt, .pdf, .docx · Contracts, filings, registrations
+              </p>
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".txt,.pdf,.docx"
+                style={{ display: 'none' }}
+                onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+                aria-label="Upload document file"
+              />
             </div>
-
-            {/* Legend */}
-            {result && (
-              <div className="card">
-                <div className="font-semibold text-sm mb-3 flex items-center gap-2">
-                  <Tag size={15} className="text-[var(--green-primary)]" /> Entity Legend
-                </div>
-                <EntityLegend />
-              </div>
-            )}
           </div>
 
-          {/* Right: processing result */}
-          <div className="xl:col-span-3 space-y-6">
-            {processing && (
-              <div className="card flex flex-col items-center justify-center py-16 animate-fade-in">
-                <div className="w-12 h-12 rounded-full border-4 border-[var(--green-primary)] border-t-transparent animate-spin mb-4" />
-                <div className="font-semibold">Analyzing document...</div>
-                <div className="text-sm text-[var(--text-secondary)] mt-1">Running entity extraction & risk assessment</div>
+          {/* Sample documents */}
+          <div className="ri-chart-panel">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '0.75rem', fontWeight: 700, fontSize: 13 }}>
+              <Document size={16} style={{ color: 'var(--ri-green-primary)' }} aria-hidden="true" />
+              Sample Documents
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {sampleDocuments.map(doc => (
+                <button
+                  key={doc.name}
+                  onClick={() => runProcess(doc.content, doc.name)}
+                  style={{
+                    textAlign: 'left',
+                    background: 'var(--cds-layer-02)',
+                    border: '1px solid var(--cds-border-subtle-01)',
+                    borderRadius: 6,
+                    padding: '0.625rem 0.875rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.625rem',
+                    color: 'var(--cds-text-primary)',
+                    transition: 'border-color 0.15s, background 0.15s',
+                  }}
+                  onMouseOver={e => {
+                    e.currentTarget.style.borderColor = 'var(--ri-green-primary)';
+                    e.currentTarget.style.background = 'var(--ri-green-pale)';
+                  }}
+                  onMouseOut={e => {
+                    e.currentTarget.style.borderColor = 'var(--cds-border-subtle-01)';
+                    e.currentTarget.style.background = 'var(--cds-layer-02)';
+                  }}
+                  aria-label={`Analyze ${doc.name}`}
+                >
+                  <Document size={16} style={{ color: 'var(--cds-text-secondary)', flexShrink: 0 }} aria-hidden="true" />
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>{doc.name}</div>
+                    <div style={{ fontSize: 11, color: 'var(--cds-text-secondary)', textTransform: 'capitalize' }}>{doc.type} document</div>
+                  </div>
+                  <ArrowRight size={14} style={{ marginLeft: 'auto', color: 'var(--cds-text-secondary)' }} aria-hidden="true" />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Entity legend */}
+          {result && (
+            <div className="ri-chart-panel">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '0.75rem', fontWeight: 700, fontSize: 13 }}>
+                <TagGroup size={16} style={{ color: 'var(--ri-green-primary)' }} aria-hidden="true" />
+                Entity Legend
               </div>
-            )}
+              <EntityLegend />
+            </div>
+          )}
+        </div>
 
-            {!processing && !result && (
-              <div className="card flex flex-col items-center justify-center py-20 text-center animate-fade-in">
-                <Sparkles size={48} className="text-[var(--green-primary)] opacity-40 mb-4" />
-                <div className="font-semibold text-[var(--text-secondary)]">Upload or select a sample document</div>
-                <div className="text-sm text-[var(--text-secondary)] mt-1 max-w-xs">
-                  The AI processor will extract entities like amounts, dates, tax IDs, organizations, and flag risk indicators.
-                </div>
+        {/* ── Right column ─────────────────── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+
+          {/* Empty state */}
+          {!processing && !result && (
+            <div
+              className="ri-chart-panel ri-fade-up"
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem 2rem', textAlign: 'center', minHeight: 300 }}
+            >
+              <MagicWand size={52} style={{ color: 'var(--ri-green-primary)', opacity: 0.4, marginBottom: '1rem' }} aria-hidden="true" />
+              <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--cds-text-secondary)', marginBottom: 8 }}>
+                Upload or select a sample document
+              </p>
+              <p style={{ fontSize: 13, color: 'var(--cds-text-secondary)', maxWidth: 320 }}>
+                The AI processor will extract currency amounts, dates, tax IDs, organizations, and flag risk indicators.
+              </p>
+            </div>
+          )}
+
+          {/* Processing state */}
+          {processing && (
+            <div
+              className="ri-chart-panel ri-fade-up"
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '3rem 2rem', textAlign: 'center', minHeight: 300 }}
+            >
+              <InlineLoading description="Analyzing document — running entity extraction & risk assessment…" />
+            </div>
+          )}
+
+          {/* Results */}
+          {!processing && result && (
+            <>
+              {/* KPI summary strip */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem' }}>
+                {[
+                  { label: 'Document Type', value: result.documentType, color: 'var(--ri-green-light)' },
+                  { label: 'Entities Found', value: String(result.entities.length), color: '#4589ff' },
+                  { label: 'Confidence', value: `${result.confidence}%`, color: '#be95ff' },
+                  { label: 'Risk Score', value: `${result.riskScore}/100`, color: riskColor },
+                ].map(s => (
+                  <div key={s.label} className="ri-kpi-tile" style={{ padding: '0.875rem' }}>
+                    <div className="ri-kpi-value" style={{ fontSize: 18, color: s.color }}>{s.value}</div>
+                    <div className="ri-kpi-label">{s.label}</div>
+                  </div>
+                ))}
               </div>
-            )}
 
-            {!processing && result && (
-              <>
-                {/* Summary cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-5 animate-fade-in">
-                  {[
-                    { label: 'Doc Type', value: result.documentType, icon: FileText, color: '#008751' },
-                    { label: 'Entities Found', value: result.entities.length.toString(), icon: Tag, color: '#1d4ed8' },
-                    { label: 'Confidence', value: `${result.confidence}%`, icon: Sparkles, color: '#7c3aed' },
-                    { label: 'Risk Score', value: `${result.riskScore}/100`, icon: ShieldAlert, color: result.riskScore > 60 ? '#dc2626' : result.riskScore > 30 ? '#f59e0b' : '#008751' },
-                  ].map((s, i) => {
-                    const Icon = s.icon;
-                    return (
-                      <div key={i} className="card py-3 px-4">
-                        <Icon size={16} style={{ color: s.color }} className="mb-1" />
-                        <div className="font-bold text-sm" style={{ color: s.color }}>{s.value}</div>
-                        <div className="text-[10px] text-[var(--text-secondary)] uppercase tracking-wide mt-0.5">{s.label}</div>
-                      </div>
-                    );
-                  })}
+              {/* Risk score bar */}
+              <div className="ri-chart-panel">
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13, fontWeight: 700 }}>
+                  <span>Risk Score</span>
+                  <span style={{ color: riskColor }}>{result.riskScore}/100</span>
                 </div>
-
-                {/* Risk flags */}
+                <div className="ri-progress-bar" style={{ height: 8 }}>
+                  <div className="ri-progress-fill" style={{ width: `${result.riskScore}%`, background: riskColor }} />
+                </div>
                 {result.riskFlags.length > 0 && (
-                  <div className="card animate-fade-in" style={{ borderLeft: '4px solid #dc2626' }}>
-                    <div className="font-semibold text-sm mb-2 flex items-center gap-2 text-red-700">
-                      <ShieldAlert size={15} /> Risk Flags ({result.riskFlags.length})
-                    </div>
-                    <div className="space-y-1">
-                      {result.riskFlags.map((f, i) => (
-                        <div key={i} className="flex items-start gap-2 text-xs text-red-800">
-                          <AlertTriangle size={12} className="mt-0.5 shrink-0" />
-                          {f}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Extraction summary table */}
-                <div className="card animate-fade-in">
-                  <div className="font-semibold text-sm mb-3 flex items-center gap-2">
-                    <Sparkles size={14} className="text-[var(--green-primary)]" /> Extraction Summary — {filename}
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-sm">
-                    {[
-                      { label: 'Currency Amounts', icon: '₦', items: result.summary.amounts, cls: 'entity-amount' },
-                      { label: 'Dates', icon: '📅', items: result.summary.dates, cls: 'entity-date' },
-                      { label: 'Organizations', icon: '🏛', items: result.summary.organizations, cls: 'entity-org' },
-                      { label: 'Tax IDs (FIRS/TIN)', icon: '#', items: result.summary.taxIds, cls: 'entity-taxid' },
-                      { label: 'CAC Registrations', icon: '©', items: result.summary.cacIds, cls: 'entity-taxid' },
-                      { label: 'Risk Keywords', icon: '⚠', items: result.summary.riskKeywords, cls: 'entity-risk' },
-                    ].map(row => (
-                      <div key={row.label} className="bg-[#f8faf9] rounded-lg p-3">
-                        <div className="text-[10px] uppercase tracking-wider text-[var(--text-secondary)] font-semibold mb-1.5">{row.label} ({row.items.length})</div>
-                        {row.items.length === 0
-                          ? <span className="text-[11px] text-[var(--text-secondary)]">None detected</span>
-                          : <div className="flex flex-wrap gap-1">{row.items.slice(0, 5).map((it, i) => <span key={i} className={`${row.cls} badge text-[10px]`}>{it}</span>)}</div>
-                        }
+                  <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+                    {result.riskFlags.map((f, i) => (
+                      <div key={i} className="ri-alert error" style={{ padding: '0.5rem 0.75rem' }}>
+                        <WarningAlt size={13} aria-hidden="true" style={{ flexShrink: 0 }} />
+                        <span style={{ fontSize: 12 }}>{f}</span>
                       </div>
                     ))}
                   </div>
-                </div>
+                )}
+              </div>
 
-                {/* Highlighted document */}
-                <div className="card animate-fade-in">
-                  <div className="font-semibold text-sm mb-3 flex items-center gap-2">
-                    <FileText size={14} className="text-[var(--green-primary)]" /> Document View — Highlighted Entities
-                  </div>
-                  <EntityLegend />
-                  <div className="bg-[#f8faf9] rounded-xl p-4 max-h-96 overflow-y-auto border border-[var(--border)]">
-                    <HighlightedText text={text} entities={result.entities} />
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
+              {/* Tabs: Summary + Document view */}
+              <div className="ri-chart-panel" style={{ padding: 0, overflow: 'hidden' }}>
+                <Tabs>
+                  <TabList aria-label="Document analysis tabs">
+                    <Tab id="ri-tab-summary">Extraction Summary</Tab>
+                    <Tab id="ri-tab-doc">Document View</Tab>
+                  </TabList>
+                  <TabPanels>
+                    <TabPanel style={{ padding: '1rem' }}>
+                      <div style={{ fontSize: 12, color: 'var(--cds-text-secondary)', marginBottom: '0.875rem' }}>
+                        Analyzing <strong style={{ color: 'var(--cds-text-primary)' }}>{filename}</strong>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.625rem' }}>
+                        {[
+                          { label: 'Currency Amounts', items: result.summary.amounts, cls: 'ri-entity-amount' },
+                          { label: 'Dates', items: result.summary.dates, cls: 'ri-entity-date' },
+                          { label: 'Organizations', items: result.summary.organizations, cls: 'ri-entity-org' },
+                          { label: 'Tax IDs (FIRS/TIN)', items: result.summary.taxIds, cls: 'ri-entity-taxid' },
+                          { label: 'CAC Registrations', items: result.summary.cacIds, cls: 'ri-entity-cacid' },
+                          { label: 'Risk Keywords', items: result.summary.riskKeywords, cls: 'ri-entity-risk' },
+                        ].map(row => (
+                          <div key={row.label} style={{ background: 'var(--cds-layer-02)', borderRadius: 6, padding: '0.625rem' }}>
+                            <div style={{ fontSize: 10, color: 'var(--cds-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.4px', fontWeight: 700, marginBottom: 6 }}>
+                              {row.label} ({row.items.length})
+                            </div>
+                            {row.items.length === 0 ? (
+                              <span style={{ fontSize: 11, color: 'var(--cds-text-secondary)' }}>None detected</span>
+                            ) : (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                                {row.items.slice(0, 5).map((it, i) => (
+                                  <span key={i} className={row.cls} style={{ fontSize: 10, padding: '1px 6px', borderRadius: 3 }}>{it}</span>
+                                ))}
+                                {row.items.length > 5 && (
+                                  <span style={{ fontSize: 10, color: 'var(--cds-text-secondary)' }}>+{row.items.length - 5} more</span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </TabPanel>
+
+                    <TabPanel style={{ padding: '1rem' }}>
+                      <EntityLegend />
+                      <div
+                        style={{
+                          background: 'var(--cds-layer-02)',
+                          border: '1px solid var(--cds-border-subtle-01)',
+                          borderRadius: 8,
+                          padding: '1rem',
+                          maxHeight: 400,
+                          overflowY: 'auto',
+                        }}
+                      >
+                        <HighlightedText text={text} entities={result.entities} />
+                      </div>
+                    </TabPanel>
+                  </TabPanels>
+                </Tabs>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
